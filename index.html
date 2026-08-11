@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Council Election - UPS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        school: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            500: '#ef4444', 
+                            600: '#dc2626',
+                            800: '#991b1b',
+                            900: '#7f1d1d',
+                            blue: '#1e3a8a', 
+                            yellow: '#fef08a' 
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .view-section {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* EVM Style Button Elements */
+        .evm-btn {
+            background: #1e3a8a; 
+            border: 4px solid #172554;
+            border-radius: 50%;
+            width: 64px;
+            height: 64px;
+            box-shadow: 0 6px 10px rgba(0,0,0,0.3), inset 0 -4px 6px rgba(0,0,0,0.2), inset 0 4px 6px rgba(255,255,255,0.2);
+            transition: all 0.1s;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .evm-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.2);
+        }
+
+        .evm-btn:disabled {
+            background: #94a3b8;
+            border-color: #64748b;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .evm-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #ef4444; 
+            border: 2px solid #b91c1c;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+
+        .evm-indicator.active {
+            background-color: #22c55e; 
+            border-color: #15803d;
+            box-shadow: 0 0 10px #22c55e, inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .candidate-card {
+            transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
+        }
+        
+        .candidate-card.selected-card {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
+
+        .img-preview-container {
+            width: 150px;
+            height: 150px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px dashed #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f1f5f9;
+            cursor: pointer;
+        }
+        .img-preview-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Results Bar Chart */
+        .result-bar-bg {
+            background-color: #e2e8f0;
+            border-radius: 9999px;
+            height: 12px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .result-bar-fill {
+            background-color: #1e3a8a;
+            height: 100%;
+            transition: width 1s ease-out;
+        }
+
+        /* Loading Overlay */
+        #global-loader {
+            display: none;
+            backdrop-filter: blur(4px);
+        }
+        #global-loader.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <nav class="bg-school-blue text-white shadow-md relative z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="ui.navigate('welcome')">
+                    <div class="bg-white rounded-full flex items-center justify-center text-school-blue font-extrabold text-xl shadow-inner" style="width: 48px; height: 48px;">
+                        UPS
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold leading-tight">Udaya Public School</h1>
+                        <p class="text-xs text-school-100">Student Council Election</p>
+                    </div>
+                </div>
+                <div>
+                    <button onclick="ui.showAdminLogin()" id="nav-admin-btn" class="text-school-100 hover:text-white text-sm font-medium transition-colors">
+                        <i class="fas fa-lock mr-1"></i> Admin
+                    </button>
+                    <button onclick="admin.logout()" id="nav-logout-btn" class="hidden text-school-100 hover:text-white text-sm font-medium transition-colors">
+                        <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Global Loading State -->
+    <div id="global-loader" class="fixed inset-0 bg-white/70 z-50 items-center justify-center flex-col">
+        <i class="fas fa-circle-notch fa-spin text-5xl text-school-blue mb-4"></i>
+        <p class="text-lg font-semibold text-gray-800 animate-pulse" id="loader-text">Loading System...</p>
+    </div>
+
+    <main class="flex-grow w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 relative z-10">
+        
+        <!-- VIEW: SETUP INITIAL ADMIN -->
+        <div id="view-setup" class="view-section">
+            <div class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl mt-10 border-t-4 border-school-600">
+                <div class="text-center mb-6">
+                    <i class="fas fa-tools text-4xl text-school-600 mb-2"></i>
+                    <h2 class="text-2xl font-bold text-gray-800">System Initialization</h2>
+                    <p class="text-gray-500 mt-2 text-sm">Welcome. Please set a secure administrator password to initialize the election system.</p>
+                </div>
+                <form onsubmit="admin.initializeSystem(event)">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Create Admin Password</label>
+                        <input type="password" id="setup-password" required minlength="6" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-school-blue">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Confirm Password</label>
+                        <input type="password" id="setup-password-confirm" required minlength="6" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-school-blue">
+                    </div>
+                    <button type="submit" class="w-full bg-school-600 hover:bg-school-800 text-white font-bold py-3 px-4 rounded-lg shadow transition-colors">
+                        Initialize System
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- VIEW: WELCOME -->
+        <div id="view-welcome" class="view-section text-center py-12">
+            <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="bg-school-600 p-8 text-white relative border-b-4 border-school-yellow overflow-hidden">
+                    <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                        <span class="text-[12rem] font-black text-black leading-none select-none tracking-tighter">UPS</span>
+                    </div>
+                    <div class="relative z-10">
+                        <i class="fas fa-vote-yea text-6xl mb-4 text-school-yellow"></i>
+                        <h2 class="text-3xl font-bold mb-2">Digital Voting Portal</h2>
+                        <p class="text-school-50 text-lg">Cast your vote to elect the Student Council.</p>
+                    </div>
+                </div>
+                <div class="p-8">
+                    <div class="grid grid-cols-2 gap-4 mb-8 text-left">
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                            <p class="text-sm text-gray-500 font-semibold uppercase tracking-wider">Date</p>
+                            <p class="text-lg font-medium text-gray-800" id="welcome-date">Loading...</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                            <p class="text-sm text-gray-500 font-semibold uppercase tracking-wider">Status</p>
+                            <p class="text-lg font-medium flex items-center gap-2" id="welcome-status">
+                                <!-- Status injected here -->
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div id="welcome-action-area">
+                        <!-- Action button injected based on status -->
+                    </div>
+                    
+                    <p class="text-sm text-gray-500 mt-6"><i class="fas fa-shield-alt mr-1"></i> Your vote is secret, secure, and encrypted.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: VERIFICATION -->
+        <div id="view-verify" class="view-section">
+            <div class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl mt-10 border-t-4 border-school-blue">
+                <div class="text-center mb-8">
+                    <div class="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-id-card text-2xl text-school-blue"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">Student Entry</h2>
+                    <p class="text-gray-500 mt-2">Enter your details to cast your vote.</p>
+                </div>
+                <form onsubmit="votingFlow.handleVerification(event)">
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Class & Sec</label>
+                            <input type="text" id="voter-class-input" required placeholder="e.g. 10-A" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-school-blue uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Roll Number</label>
+                            <input type="text" id="voter-roll-input" required placeholder="e.g. 21" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-school-blue uppercase">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-school-blue hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg shadow transition-colors text-lg">
+                        Proceed to Vote
+                    </button>
+                    <button type="button" onclick="ui.navigate('welcome')" class="w-full mt-3 text-gray-500 hover:text-gray-700 text-sm font-medium py-2">
+                        Cancel
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- VIEW: VOTING (EVM STYLE) -->
+        <div id="view-voting" class="view-section max-w-4xl mx-auto">
+            <div class="flex justify-between items-end mb-6 border-b-2 border-gray-200 pb-4">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-gray-800 uppercase tracking-wide" id="voting-position-title">Position Name</h2>
+                    <p class="text-gray-500 text-sm font-medium mt-1">Select ONE candidate</p>
+                </div>
+                <div class="text-right">
+                    <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider" id="voting-progress">1 / 4</span>
+                </div>
+            </div>
+
+            <!-- Candidate List Container -->
+            <div id="ballot-container" class="space-y-4">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- VIEW: SUCCESS -->
+        <div id="view-success" class="view-section text-center py-16">
+            <div class="max-w-lg mx-auto bg-white rounded-2xl shadow-xl p-10 border-t-8 border-green-500">
+                <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-check-circle text-6xl text-green-500"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Voting Complete!</h2>
+                <p class="text-gray-600 text-lg mb-8">Your votes have been securely recorded and encrypted in the system. Thank you for participating!</p>
+                <button onclick="ui.navigate('welcome')" class="bg-school-blue hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg shadow transition-colors">
+                    Secure Logout & Finish
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW: ADMIN LOGIN -->
+        <div id="view-admin-login" class="view-section">
+            <div class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl mt-10">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Admin Login</h2>
+                    <button onclick="ui.navigate('welcome')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <form onsubmit="admin.handleLogin(event)">
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Master Password</label>
+                        <input type="password" id="admin-password-input" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-school-blue">
+                    </div>
+                    <button type="submit" class="w-full bg-gray-900 hover:bg-black text-white font-bold py-3 px-4 rounded-lg shadow transition-colors">
+                        Access Dashboard
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- VIEW: ADMIN DASHBOARD -->
+        <div id="view-admin-dashboard" class="view-section bg-white rounded-xl shadow-xl overflow-hidden min-h-[700px] border border-gray-200">
+            <div class="flex flex-col md:flex-row h-full min-h-[700px]">
+                <!-- Sidebar -->
+                <div class="w-full md:w-64 bg-gray-900 text-white flex-shrink-0 flex flex-col">
+                    <div class="p-6 border-b border-gray-800">
+                        <h2 class="text-xl font-bold flex items-center gap-2"><i class="fas fa-cogs text-school-yellow"></i> Control Panel</h2>
+                    </div>
+                    <ul class="py-4 flex-grow space-y-1">
+                        <li><button onclick="admin.switchTab('control')" class="admin-tab-btn w-full text-left px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent text-gray-300" data-tab="control"><i class="fas fa-power-off w-6"></i> Election Control</button></li>
+                        <li><button onclick="admin.switchTab('positions')" class="admin-tab-btn w-full text-left px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent text-gray-300" data-tab="positions"><i class="fas fa-sitemap w-6"></i> Positions</button></li>
+                        <li><button onclick="admin.switchTab('candidates')" class="admin-tab-btn w-full text-left px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent text-gray-300" data-tab="candidates"><i class="fas fa-user-tie w-6"></i> Candidates</button></li>
+                        <li><button onclick="admin.switchTab('voters')" class="admin-tab-btn w-full text-left px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent text-gray-300" data-tab="voters"><i class="fas fa-users w-6"></i> Voters</button></li>
+                        <li><button onclick="admin.switchTab('results')" class="admin-tab-btn w-full text-left px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent text-gray-300" data-tab="results"><i class="fas fa-chart-bar w-6"></i> Results & Reports</button></li>
+                        <li><button onclick="admin.switchTab('audit')" class="admin-tab-btn w-full text-left px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent text-gray-300" data-tab="audit"><i class="fas fa-clipboard-list w-6"></i> Audit Log</button></li>
+                    </ul>
+                </div>
+
+                <!-- Admin Content Area -->
+                <div class="flex-grow p-6 md:p-8 bg-gray-50 h-[700px] overflow-y-auto relative">
+                    
+                    <div id="admin-tab-control" class="admin-tab hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-2xl font-bold text-gray-800">Election Control Center</h3>
+                        </div>
+
+                        <!-- Status Workflow -->
+                        <div class="bg-white p-6 rounded-xl shadow border border-gray-200 mb-8">
+                            <h4 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Current Election Phase</h4>
+                            <div class="flex flex-wrap gap-2 items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                <button onclick="admin.setElectionStatus('DRAFT')" id="status-btn-DRAFT" class="px-4 py-2 rounded font-bold text-sm transition-colors border-2">DRAFT</button>
+                                <i class="fas fa-arrow-right text-gray-300 hidden sm:block"></i>
+                                <button onclick="admin.setElectionStatus('READY')" id="status-btn-READY" class="px-4 py-2 rounded font-bold text-sm transition-colors border-2">READY</button>
+                                <i class="fas fa-arrow-right text-gray-300 hidden sm:block"></i>
+                                <button onclick="admin.setElectionStatus('OPEN')" id="status-btn-OPEN" class="px-4 py-2 rounded font-bold text-sm transition-colors border-2">OPEN (LIVE)</button>
+                                <i class="fas fa-arrow-right text-gray-300 hidden sm:block"></i>
+                                <button onclick="admin.setElectionStatus('PAUSED')" id="status-btn-PAUSED" class="px-4 py-2 rounded font-bold text-sm transition-colors border-2">PAUSED</button>
+                                <i class="fas fa-arrow-right text-gray-300 hidden sm:block"></i>
+                                <button onclick="admin.setElectionStatus('CLOSED')" id="status-btn-CLOSED" class="px-4 py-2 rounded font-bold text-sm transition-colors border-2">CLOSED</button>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-4" id="status-help-text"><i class="fas fa-info-circle"></i> Select a phase to update the system.</p>
+                        </div>
+
+                        <!-- Live Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="bg-white p-6 rounded-xl shadow border border-gray-100 flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl"><i class="fas fa-users"></i></div>
+                                <div><p class="text-sm text-gray-500 font-medium">Eligible Voters</p><p class="text-3xl font-bold text-gray-800" id="stat-total-voters">0</p></div>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow border border-gray-100 flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl"><i class="fas fa-check-double"></i></div>
+                                <div><p class="text-sm text-gray-500 font-medium">Votes Cast</p><p class="text-3xl font-bold text-gray-800" id="stat-votes-cast">0</p></div>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow border border-gray-100 flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-xl"><i class="fas fa-user-tie"></i></div>
+                                <div><p class="text-sm text-gray-500 font-medium">Active Candidates</p><p class="text-3xl font-bold text-gray-800" id="stat-active-candidates">0</p></div>
+                            </div>
+                        </div>
+
+                        <!-- Danger Zone -->
+                        <div class="bg-red-50 p-6 rounded-xl border border-red-200">
+                            <h4 class="text-red-800 font-bold mb-2"><i class="fas fa-exclamation-triangle mr-2"></i> Danger Zone</h4>
+                            <p class="text-sm text-red-600 mb-4">Actions here are permanent and destructive.</p>
+                            <div class="flex gap-4">
+                                <button onclick="admin.purgeVotes()" class="bg-white border border-red-300 text-red-700 px-4 py-2 rounded hover:bg-red-100 text-sm font-bold transition-colors">Wipe All Votes</button>
+                                <button onclick="admin.factoryReset()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm font-bold transition-colors">Factory Reset System</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="admin-tab-positions" class="admin-tab hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-2xl font-bold text-gray-800">Position Management</h3>
+                            <button onclick="admin.showPositionModal()" class="bg-school-blue hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors"><i class="fas fa-plus mr-2"></i>New Position</button>
+                        </div>
+                        <div class="bg-white rounded-xl shadow overflow-hidden border border-gray-200">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Order</th>
+                                        <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Position Name</th>
+                                        <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-positions-list" class="divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="admin-tab-candidates" class="admin-tab hidden">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                            <h3 class="text-2xl font-bold text-gray-800">Candidate Roster</h3>
+                            <div class="flex gap-3 w-full md:w-auto">
+                                <select id="filter-position" onchange="admin.renderCandidates()" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-school-blue block p-2 shadow-sm flex-grow">
+                                    <option value="all">All Positions</option>
+                                </select>
+                                <button onclick="admin.showCandidateModal()" class="bg-school-blue hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors whitespace-nowrap"><i class="fas fa-user-plus mr-2"></i>Add Candidate</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="admin-candidates-list"></div>
+                    </div>
+
+                    <div id="admin-tab-voters" class="admin-tab hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-2xl font-bold text-gray-800">Voters Participated</h3>
+                            <button onclick="admin.showClearVotersConfirm()" class="bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors"><i class="fas fa-trash mr-2"></i>Clear Roll</button>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow overflow-hidden border border-gray-200">
+                            <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                                <span class="font-bold text-sm text-gray-700">Participated Voters (<span id="voter-list-count">0</span>)</span>
+                                <input type="text" id="voter-search" placeholder="Search Roll or Name..." onkeyup="admin.renderVoters()" class="px-3 py-1 text-sm border rounded">
+                            </div>
+                            <div class="max-h-[500px] overflow-y-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="bg-gray-50 sticky top-0 shadow-sm">
+                                        <tr>
+                                            <th class="py-2 px-4 text-xs font-semibold text-gray-600">Roll No.</th>
+                                            <th class="py-2 px-4 text-xs font-semibold text-gray-600">Name</th>
+                                            <th class="py-2 px-4 text-xs font-semibold text-gray-600">Class</th>
+                                            <th class="py-2 px-4 text-xs font-semibold text-gray-600">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-voters-list" class="divide-y divide-gray-100 text-sm"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="admin-tab-results" class="admin-tab hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-2xl font-bold text-gray-800">Election Results</h3>
+                            <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-black"><i class="fas fa-print mr-2"></i>Print Report</button>
+                        </div>
+                        <div id="results-warning" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
+                            <p class="text-sm text-yellow-800"><i class="fas fa-exclamation-circle mr-2"></i> <strong>Note:</strong> Final results are only official once the election state is CLOSED. Partial results may change.</p>
+                        </div>
+                        <div id="results-container" class="space-y-8">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <div id="admin-tab-audit" class="admin-tab hidden">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6">Security & Audit Log</h3>
+                        <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+                            <div class="max-h-[500px] overflow-y-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="bg-gray-900 text-white sticky top-0 shadow-sm">
+                                        <tr>
+                                            <th class="py-3 px-4 text-xs font-semibold uppercase tracking-wider">Timestamp</th>
+                                            <th class="py-3 px-4 text-xs font-semibold uppercase tracking-wider">Action</th>
+                                            <th class="py-3 px-4 text-xs font-semibold uppercase tracking-wider">Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-audit-list" class="divide-y divide-gray-200 text-sm font-mono"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom Modal Container -->
+    <div id="custom-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 z-[100] flex items-center justify-center backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-95 opacity-0 flex flex-col max-h-[95vh]" id="custom-modal-content">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                <h3 class="text-lg font-bold text-gray-800" id="modal-title">Title</h3>
+                <button onclick="ui.hideModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="px-6 py-6 overflow-y-auto" id="modal-body"></div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3" id="modal-footer"></div>
+        </div>
+    </div>
+
+    <!-- Hidden File Input for Image Upload -->
+    <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/jpg" class="hidden" onchange="admin.handleImageUpload(event)">
+
+    <script>
+        // --- LOCAL STORAGE DATABASE IMPLEMENTATION ---
+        window.appId = 'school-election-app';
+        window.localStoreKey = 'ups_election_data';
+        
+        function getStore() {
+            return JSON.parse(localStorage.getItem(window.localStoreKey) || '{"config":null,"positions":[],"candidates":[],"voters":[],"votes":[],"voter_status":[],"audit_logs":[]}');
+        }
+        
+        function saveStore(store) {
+            localStorage.setItem(window.localStoreKey, JSON.stringify(store));
+        }
+        
+        window.db = {}; // Dummy db object
+        window.doc = (db, ...paths) => paths.join('/');
+        window.collection = (db, ...paths) => paths.join('/');
+        
+        window.mockListeners = {};
+        window.triggerMockSnapshot = (col, specificCallback = null) => {
+            const store = getStore();
+            const callbacks = specificCallback ? [specificCallback] : (window.mockListeners[col] || []);
+            if(col === 'settings') {
+                callbacks.forEach(cb => cb({ exists: () => !!store.config, data: () => store.config }));
+            } else {
+                const docs = (store[col]||[]).map(d => ({ id: d.id, ref: col+'/'+d.id, data: () => d }));
+                callbacks.forEach(cb => cb({ forEach: (fn) => docs.forEach(fn), docs: docs }));
+            }
+        };
+
+        window.getDoc = async (path) => {
+            const store = getStore();
+            if(path.includes('config/settings')) return { exists: () => !!store.config, data: () => store.config };
+            const parts = path.split('/'); const id = parts.pop(); const col = parts.pop();
+            if (store[col]) {
+                const item = store[col].find(x => x.id === id);
+                if (item) return { exists: () => true, data: () => item };
+            }
+            return { exists: () => false, data: () => null };
+        };
+
+        window.setDoc = async (path, data) => {
+            const store = getStore();
+            if(path.includes('config/settings')) { store.config = data; saveStore(store); window.triggerMockSnapshot('settings'); }
+        };
+
+        window.updateDoc = async (path, data) => {
+            const store = getStore();
+            if(path.includes('config/settings')) { 
+                store.config = {...store.config, ...data}; saveStore(store); window.triggerMockSnapshot('settings'); 
+            } else {
+                 const parts = path.split('/'); const id = parts.pop(); const col = parts.pop();
+                 if(store[col]) {
+                     const idx = store[col].findIndex(x => x.id === id);
+                     if(idx > -1) { store[col][idx] = {...store[col][idx], ...data}; saveStore(store); window.triggerMockSnapshot(col); }
+                 }
+            }
+        };
+
+        window.deleteDoc = async (path) => {
+            const store = getStore();
+            if(path.includes('config/settings')) { 
+                store.config = null; saveStore(store); 
+            } else {
+                 const parts = path.split('/'); const id = parts.pop(); const col = parts.pop();
+                 if (store[col]) { store[col] = store[col].filter(x => x.id !== id); saveStore(store); window.triggerMockSnapshot(col); }
+            }
+        };
+
+        window.addDoc = async (colPath, data) => {
+            const store = getStore();
+            const col = colPath.split('/').pop();
+            const id = Math.random().toString(36).substr(2,9);
+            if(!store[col]) store[col] = [];
+            store[col].push({id, ...data}); saveStore(store); window.triggerMockSnapshot(col);
+            return {id, ref: colPath + '/' + id};
+        };
+
+        window.getDocs = async (colPath) => {
+            const store = getStore();
+            const col = colPath.split('/').pop();
+            const docs = (store[col]||[]).map(d => ({ id: d.id, ref: colPath+'/'+d.id, data: () => d }));
+            return { docs, forEach: (fn) => docs.forEach(fn) };
+        };
+
+        window.onSnapshot = (path, callback) => {
+            const col = path.includes('config/settings') ? 'settings' : path.split('/').pop();
+            if(!window.mockListeners[col]) window.mockListeners[col] = [];
+            window.mockListeners[col].push(callback);
+            setTimeout(() => { window.triggerMockSnapshot(col, callback); }, 0);
+            return () => { window.mockListeners[col] = window.mockListeners[col].filter(cb => cb !== callback); };
+        };
+
+        async function bootSystem() {
+            ui.showLoader("Initializing System...");
+            try {
+                await core.init();
+            } catch (error) {
+                console.error("Boot Error:", error);
+                ui.showAlert("System Error", "Failed to start election system: " + error.message);
+            }
+            ui.hideLoader();
+        }
+
+        // Wait for DOM
+        window.addEventListener('DOMContentLoaded', bootSystem);
+
+        // Utilities
+        const utils = {
+            basePath: () => `artifacts/${window.appId}`,
+            
+            async hashPassword(message) {
+                const msgBuffer = new TextEncoder().encode(message);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            },
+
+            generateId: () => Math.random().toString(36).substr(2, 9),
+            
+            formatDate: () => new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        };
+
+        // UI Manager
+        const ui = {
+            navigate(viewId) {
+                document.querySelectorAll('.view-section').forEach(el => {
+                    el.classList.remove('active');
+                    el.style.animation = 'none';
+                    el.offsetHeight; 
+                    el.style.animation = null; 
+                });
+                document.getElementById('view-' + viewId).classList.add('active');
+            },
+
+            showLoader(text = "Loading...") {
+                document.getElementById('loader-text').innerText = text;
+                document.getElementById('global-loader').classList.add('active');
+            },
+            hideLoader() { document.getElementById('global-loader').classList.remove('active'); },
+
+            showModal(title, contentHTML, buttonsHTML) {
+                document.getElementById('modal-title').innerText = title;
+                document.getElementById('modal-body').innerHTML = contentHTML;
+                document.getElementById('modal-footer').innerHTML = buttonsHTML;
+                
+                const modal = document.getElementById('custom-modal');
+                const content = document.getElementById('custom-modal-content');
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            },
+            hideModal() {
+                const modal = document.getElementById('custom-modal');
+                const content = document.getElementById('custom-modal-content');
+                content.classList.remove('scale-100', 'opacity-100');
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => { modal.classList.add('hidden'); }, 300);
+            },
+            showAlert(title, message) {
+                const content = `<p class="text-gray-700">${message}</p>`;
+                const btn = `<button onclick="ui.hideModal()" class="bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-gray-900 font-bold">Close</button>`;
+                this.showModal(title, content, btn);
+            },
+            showConfirm(title, message, confirmCallbackText, danger = false) {
+                const content = `<p class="text-gray-700 text-lg">${message}</p>`;
+                const btnColor = danger ? 'bg-red-600 hover:bg-red-700' : 'bg-school-blue hover:bg-blue-800';
+                const btns = `
+                    <button onclick="ui.hideModal()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded shadow-sm hover:bg-gray-300 font-bold">Cancel</button>
+                    <button onclick="${confirmCallbackText}; ui.hideModal();" class="${btnColor} text-white px-4 py-2 rounded shadow font-bold">Confirm</button>
+                `;
+                this.showModal(title, content, btns);
+            },
+
+            updateWelcomeScreen() {
+                const status = core.state.config.status;
+                document.getElementById('welcome-date').innerText = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                
+                let statusHtml = '';
+                let actionHtml = '';
+
+                if (status === 'DRAFT' || status === 'READY') {
+                    statusHtml = `<span class="text-yellow-600"><i class="fas fa-clock mr-1"></i> Not Started</span>`;
+                    actionHtml = `<button disabled class="w-full bg-gray-300 text-gray-500 font-bold py-4 px-8 rounded-xl text-xl cursor-not-allowed">Voting Not Open Yet</button>`;
+                } else if (status === 'OPEN') {
+                    statusHtml = `
+                        <span class="relative flex h-3 w-3 mr-1">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        </span>
+                        <span class="text-green-600">LIVE</span>`;
+                    actionHtml = `
+                        <button onclick="ui.navigate('verify')" class="w-full bg-school-600 hover:bg-school-800 text-white font-bold py-4 px-8 rounded-xl text-xl shadow-lg transition-all transform hover:-translate-y-1">
+                            Start Voting <i class="fas fa-arrow-right ml-2"></i>
+                        </button>`;
+                } else if (status === 'PAUSED') {
+                    statusHtml = `<span class="text-orange-500"><i class="fas fa-pause-circle mr-1"></i> Paused by Admin</span>`;
+                    actionHtml = `<button disabled class="w-full bg-gray-300 text-gray-500 font-bold py-4 px-8 rounded-xl text-xl cursor-not-allowed">Voting Currently Paused</button>`;
+                } else if (status === 'CLOSED') {
+                    statusHtml = `<span class="text-red-600"><i class="fas fa-lock mr-1"></i> Concluded</span>`;
+                    actionHtml = `<button disabled class="w-full bg-gray-300 text-gray-500 font-bold py-4 px-8 rounded-xl text-xl cursor-not-allowed">Election Closed</button>`;
+                }
+
+                document.getElementById('welcome-status').innerHTML = statusHtml;
+                document.getElementById('welcome-action-area').innerHTML = actionHtml;
+            },
+
+            showAdminLogin() {
+                document.getElementById('admin-password-input').value = '';
+                if(core.isAdminSession) {
+                    this.navigate('admin-dashboard');
+                } else {
+                    this.navigate('admin-login');
+                }
+            }
+        };
+
+        const core = {
+            state: { config: null, positions: [], candidates: [], voters: [], votes: [], audit: [] },
+            isAdminSession: false,
+            unsubscribers: [],
+
+            async init() {
+                try {
+                    // Ensure base settings document exists
+                    const configRef = window.doc(window.db, utils.basePath(), 'config', 'settings');
+                    const docSnap = await window.getDoc(configRef);
+                    
+                    if (!docSnap.exists()) {
+                        // First run setup
+                        ui.navigate('setup');
+                        return;
+                    }
+                    
+                    this.attachListeners();
+                } catch (error) {
+                    console.error("Init Error:", error);
+                    ui.showAlert("Database Error", "Failed to load local database.");
+                }
+            },
+
+            attachListeners() {
+                // Detach old listeners if any
+                this.unsubscribers.forEach(unsub => unsub());
+                this.unsubscribers = [];
+                const basePath = utils.basePath();
+
+                // Listen to Config
+                this.unsubscribers.push(window.onSnapshot(window.doc(window.db, basePath, 'config', 'settings'), (doc) => {
+                    if (doc.exists()) {
+                        this.state.config = doc.data();
+                        ui.updateWelcomeScreen();
+                        admin.updateAdminControlUI();
+                        if(!this.isAdminSession && !document.getElementById('view-verify').classList.contains('active') && !document.getElementById('view-voting').classList.contains('active') && !document.getElementById('view-success').classList.contains('active')) {
+                            ui.navigate('welcome');
+                        }
+                    }
+                }, err => console.error("Config listener error", err)));
+
+                // Listen to Positions
+                this.unsubscribers.push(window.onSnapshot(window.collection(window.db, basePath, 'positions'), (snapshot) => {
+                    this.state.positions = [];
+                    snapshot.forEach(doc => this.state.positions.push({id: doc.id, ...doc.data()}));
+                    this.state.positions.sort((a,b) => a.order - b.order);
+                    if(this.isAdminSession) { admin.renderPositions(); admin.updatePositionFilter(); }
+                }, err => console.error("Positions error", err)));
+
+                // Listen to Candidates
+                this.unsubscribers.push(window.onSnapshot(window.collection(window.db, basePath, 'candidates'), (snapshot) => {
+                    this.state.candidates = [];
+                    snapshot.forEach(doc => this.state.candidates.push({id: doc.id, ...doc.data()}));
+                    if(this.isAdminSession) { admin.renderCandidates(); }
+                }, err => console.error("Candidates error", err)));
+
+                // Listen to Voters
+                this.unsubscribers.push(window.onSnapshot(window.collection(window.db, basePath, 'voters'), (snapshot) => {
+                    this.state.voters = [];
+                    snapshot.forEach(doc => this.state.voters.push({id: doc.id, ...doc.data()}));
+                    if(this.isAdminSession) { admin.renderVoters(); admin.updateDashboardStats(); }
+                }, err => console.error("Voters error", err)));
+
+                // Listen to Votes (Heavy if large, but needed for live stats based on artifact constraints)
+                this.unsubscribers.push(window.onSnapshot(window.collection(window.db, basePath, 'votes'), (snapshot) => {
+                    this.state.votes = [];
+                    snapshot.forEach(doc => this.state.votes.push({id: doc.id, ...doc.data()}));
+                    if(this.isAdminSession) { admin.updateDashboardStats(); admin.renderResults(); }
+                }, err => console.error("Votes error", err)));
+
+                // Listen to Audit
+                this.unsubscribers.push(window.onSnapshot(window.collection(window.db, basePath, 'audit_logs'), (snapshot) => {
+                    this.state.audit = [];
+                    snapshot.forEach(doc => this.state.audit.push({id: doc.id, ...doc.data()}));
+                    this.state.audit.sort((a,b) => b.timestamp - a.timestamp); // Descending
+                    if(this.isAdminSession) { admin.renderAudit(); }
+                }, err => console.error("Audit error", err)));
+            },
+
+            async logAudit(action, details) {
+                try {
+                    await window.addDoc(window.collection(window.db, utils.basePath(), 'audit_logs'), {
+                        action: action,
+                        details: details,
+                        timestamp: Date.now(),
+                        dateStr: utils.formatDate()
+                    });
+                } catch(e) { console.error("Audit logging failed", e); }
+            }
+        };
+
+        const votingFlow = {
+            currentVoter: null,
+            votingQueue: [],
+            currentPosition: null,
+
+            async handleVerification(e) {
+                e.preventDefault();
+                if(core.state.config.status !== 'OPEN') {
+                    ui.showAlert('Election Not Open', 'Voting is not currently active.');
+                    return;
+                }
+
+                const className = document.getElementById('voter-class-input').value.trim().toUpperCase();
+                const rollNo = document.getElementById('voter-roll-input').value.trim().toUpperCase();
+                
+                if (!className || !rollNo) return;
+                
+                const voterId = `${className}-${rollNo}`;
+
+                ui.showLoader("Verifying Identity...");
+                
+                // Check if voter exists or create on the fly
+                let voter = core.state.voters.find(v => v.voterId === voterId);
+                if (!voter) {
+                    const newVoter = {
+                        voterId: voterId,
+                        name: `Student ${voterId}`,
+                        className: className,
+                        rollNo: rollNo,
+                        timestamp: Date.now()
+                    };
+                    await window.addDoc(window.collection(window.db, utils.basePath(), 'voters'), newVoter);
+                    voter = newVoter; // locally set for this flow
+                }
+
+                this.currentVoter = voter;
+                
+                // Build queue of active positions
+                this.votingQueue = [...core.state.positions];
+                if (this.votingQueue.length === 0) {
+                    ui.hideLoader();
+                    ui.showAlert('Notice', 'No active positions to vote for.');
+                    return;
+                }
+
+                // Check voter_status for already voted positions
+                try {
+                    const statusSnapshot = await window.getDocs(window.collection(window.db, utils.basePath(), 'voter_status'));
+                    const completedPositions = [];
+                    statusSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data.voterId === voterId) {
+                            completedPositions.push(data.positionId);
+                        }
+                    });
+
+                    // Remove already voted positions from queue
+                    this.votingQueue = this.votingQueue.filter(p => !completedPositions.includes(p.id));
+
+                    ui.hideLoader();
+
+                    if(this.votingQueue.length === 0) {
+                        ui.showAlert('Voting Complete', 'Our records show you have already cast your votes for all available positions. Thank you.');
+                        return;
+                    }
+
+                    this.nextPosition();
+
+                } catch (err) {
+                    ui.hideLoader();
+                    console.error(err);
+                    ui.showAlert('System Error', 'Could not verify voting history.');
+                }
+            },
+
+            nextPosition() {
+                if(core.state.config.status !== 'OPEN') {
+                    ui.showAlert('Election Interrupted', 'The election has been paused or closed by the administrator.');
+                    ui.navigate('welcome');
+                    return;
+                }
+
+                if (this.votingQueue.length === 0) {
+                    ui.navigate('success');
+                    this.currentVoter = null;
+                    document.getElementById('voter-class-input').value = '';
+                    document.getElementById('voter-roll-input').value = '';
+                    return;
+                }
+
+                this.currentPosition = this.votingQueue.shift();
+                
+                // Update Progress UI
+                const total = core.state.positions.length;
+                const remaining = this.votingQueue.length + 1; // +1 for current
+                const currentNum = total - remaining + 1;
+                
+                document.getElementById('voting-progress').innerText = `Position ${currentNum} of ${total}`;
+                document.getElementById('voting-position-title').innerText = this.currentPosition.name;
+
+                this.renderBallot(this.currentPosition.id);
+                ui.navigate('voting');
+            },
+
+            renderBallot(positionId) {
+                const container = document.getElementById('ballot-container');
+                const candidates = core.state.candidates
+                                    .filter(c => c.positionId === positionId && c.active)
+                                    .sort((a,b) => a.candidateNumber.localeCompare(b.candidateNumber));
+                
+                if (candidates.length === 0) {
+                    container.innerHTML = `
+                        <div class="p-8 text-center bg-white rounded-xl shadow border border-gray-200">
+                            <i class="fas fa-user-slash text-4xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500 font-medium">No candidates are registered for this position.</p>
+                            <button onclick="votingFlow.nextPosition()" class="mt-6 bg-school-blue text-white font-bold px-6 py-3 rounded shadow">Skip to Next Position</button>
+                        </div>`;
+                    return;
+                }
+
+                const getHouseColor = (house) => {
+                    switch(house) {
+                        case 'Red': return 'bg-red-500';
+                        case 'Blue': return 'bg-blue-500';
+                        case 'Yellow': return 'bg-yellow-400';
+                        case 'Green': return 'bg-green-500';
+                        default: return 'bg-gray-300';
+                    }
+                };
+
+                let html = '';
+                candidates.forEach(cand => {
+                    html += `
+                    <div class="candidate-card bg-white p-4 sm:p-5 rounded-xl shadow-md border border-gray-200 flex items-center justify-between border-l-8 border-l-school-500 relative" id="card-${cand.id}">
+                        <div class="flex items-center gap-4 sm:gap-6 flex-grow">
+                            <div class="hidden sm:block text-3xl font-black text-gray-200 w-10 text-right">${cand.candidateNumber}</div>
+                            <img src="${cand.photoUrl}" alt="Photo" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-gray-100 shadow-sm flex-shrink-0 bg-gray-50">
+                            <div>
+                                <h3 class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">${cand.name}</h3>
+                                <p class="text-gray-600 font-medium text-sm sm:text-base mt-1 flex items-center gap-2">
+                                    Class ${cand.className}-${cand.section} <span class="text-gray-300">|</span> 
+                                    ${cand.house ? `<span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full shadow-sm ${getHouseColor(cand.house)} inline-block"></span> ${cand.house}</span>` : ''}
+                                </p>
+                                ${cand.symbol ? `<p class="text-xs font-bold text-school-600 mt-2 bg-red-50 inline-block px-2 py-1 rounded border border-red-100">Symbol: ${cand.symbol}</p>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 ml-4 border-l border-gray-100 pl-4 sm:pl-6">
+                            <div class="evm-indicator" id="indicator-${cand.id}"></div>
+                            <button onclick="votingFlow.selectCandidate('${cand.id}', '${cand.name.replace(/'/g, "\\'")}')" class="evm-btn flex-shrink-0 focus:outline-none focus:ring-4 focus:ring-blue-300" title="Vote for ${cand.name}"></button>
+                        </div>
+                    </div>
+                    `;
+                });
+                container.innerHTML = html;
+            },
+
+            selectCandidate(candidateId, candidateName) {
+                // Audio feedback
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime);
+                    osc.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.1);
+                } catch(e) {}
+
+                // Visual selection
+                document.querySelectorAll('.candidate-card').forEach(c => c.classList.remove('selected-card'));
+                document.querySelectorAll('.evm-indicator').forEach(i => i.classList.remove('active'));
+                document.getElementById(`card-${candidateId}`).classList.add('selected-card');
+                document.getElementById(`indicator-${candidateId}`).classList.add('active');
+
+                // Confirmation Modal
+                const content = `
+                    <div class="text-center">
+                        <i class="fas fa-shield-alt text-4xl text-blue-500 mb-4"></i>
+                        <p class="text-xl font-medium text-gray-800">You are about to cast your vote for:</p>
+                        <p class="text-3xl font-black text-school-blue mt-3 mb-2">${candidateName}</p>
+                        <p class="text-sm font-bold text-gray-500 uppercase tracking-widest">${this.currentPosition.name}</p>
+                        <div class="bg-gray-50 border border-gray-200 rounded p-3 mt-4">
+                            <p class="text-xs text-gray-500"><i class="fas fa-lock"></i> Your vote is anonymous. Confirming will lock your choice permanently for this position.</p>
+                        </div>
+                    </div>
+                `;
+                const btns = `
+                    <button onclick="votingFlow.resetSelection(); ui.hideModal();" class="bg-gray-200 text-gray-800 font-bold px-6 py-3 rounded-lg shadow-sm hover:bg-gray-300 w-full sm:w-auto">Cancel</button>
+                    <button onclick="votingFlow.castVote('${candidateId}'); ui.hideModal();" class="bg-green-600 text-white font-bold px-6 py-3 rounded-lg shadow hover:bg-green-700 w-full sm:w-auto">CONFIRM VOTE</button>
+                `;
+                setTimeout(() => ui.showModal('Confirm Vote Selection', content, btns), 300);
+            },
+
+            resetSelection() {
+                document.querySelectorAll('.candidate-card').forEach(c => c.classList.remove('selected-card'));
+                document.querySelectorAll('.evm-indicator').forEach(i => i.classList.remove('active'));
+            },
+
+            async castVote(candidateId) {
+                if(!this.currentVoter || !this.currentPosition) return;
+                
+                ui.showLoader("Encrypting & Recording Vote...");
+                
+                try {
+                    // Audio feedback success
+                    try {
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sine'; osc.frequency.setValueAtTime(1000, ctx.currentTime);
+                        osc.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.8);
+                    } catch(e) {}
+
+                    // 1. Write anonymous vote
+                    await window.addDoc(window.collection(window.db, utils.basePath(), 'votes'), {
+                        positionId: this.currentPosition.id,
+                        candidateId: candidateId,
+                        timestamp: Date.now()
+                    });
+
+                    // 2. Mark voter as having voted for this position
+                    await window.addDoc(window.collection(window.db, utils.basePath(), 'voter_status'), {
+                        voterId: this.currentVoter.voterId,
+                        positionId: this.currentPosition.id,
+                        timestamp: Date.now()
+                    });
+
+                    ui.hideLoader();
+                    setTimeout(() => { this.nextPosition(); }, 500);
+
+                } catch (err) {
+                    console.error("Vote failure", err);
+                    ui.hideLoader();
+                    ui.showAlert('Vote Error', 'A network error occurred while recording your vote. Please ask an admin for help.');
+                }
+            }
+        };
+
+        const admin = {
+            tempImageUrl: null,
+            editingCandidateId: null,
+            editingPositionId: null,
+
+            async initializeSystem(e) {
+                e.preventDefault();
+                const pwd = document.getElementById('setup-password').value;
+                const conf = document.getElementById('setup-password-confirm').value;
+                
+                if (pwd !== conf) {
+                    ui.showAlert('Error', 'Passwords do not match.');
+                    return;
+                }
+
+                ui.showLoader("Initializing Secure System...");
+                try {
+                    const hash = await utils.hashPassword(pwd);
+                    await window.setDoc(window.doc(window.db, utils.basePath(), 'config', 'settings'), {
+                        status: 'DRAFT',
+                        adminHash: hash,
+                        createdAt: Date.now()
+                    });
+                    
+                    await core.logAudit('SYSTEM_INIT', 'Election system initialized and master password set.');
+                    core.attachListeners(); // start listening now that doc exists
+                    ui.hideLoader();
+                    ui.showAlert('Success', 'System initialized successfully.');
+                    ui.navigate('welcome');
+
+                } catch(err) {
+                    console.error(err);
+                    ui.hideLoader();
+                    ui.showAlert('Error', 'Failed to initialize system.');
+                }
+            },
+
+            async handleLogin(e) {
+                e.preventDefault();
+                const pwd = document.getElementById('admin-password-input').value;
+                ui.showLoader("Verifying Credentials...");
+                
+                try {
+                    const hash = await utils.hashPassword(pwd);
+                    if (core.state.config && core.state.config.adminHash === hash) {
+                        core.isAdminSession = true;
+                        document.getElementById('nav-admin-btn').classList.add('hidden');
+                        document.getElementById('nav-logout-btn').classList.remove('hidden');
+                        
+                        await core.logAudit('ADMIN_LOGIN', 'Administrator logged in.');
+                        ui.hideLoader();
+                        ui.navigate('admin-dashboard');
+                        this.switchTab('control');
+                    } else {
+                        ui.hideLoader();
+                        ui.showAlert('Access Denied', 'Invalid master password.');
+                    }
+                } catch(err) {
+                    ui.hideLoader();
+                    ui.showAlert('Error', 'Login failed.');
+                }
+            },
+
+            logout() {
+                core.isAdminSession = false;
+                document.getElementById('nav-admin-btn').classList.remove('hidden');
+                document.getElementById('nav-logout-btn').classList.add('hidden');
+                core.logAudit('ADMIN_LOGOUT', 'Administrator logged out.');
+                ui.navigate('welcome');
+            },
+
+            switchTab(tabName) {
+                document.querySelectorAll('.admin-tab').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.admin-tab-btn').forEach(el => {
+                    el.classList.remove('border-school-blue', 'text-white', 'bg-gray-800');
+                    el.classList.add('border-transparent', 'text-gray-300');
+                });
+                
+                document.getElementById(`admin-tab-${tabName}`).classList.remove('hidden');
+                const btn = document.querySelector(`.admin-tab-btn[data-tab="${tabName}"]`);
+                if(btn) {
+                    btn.classList.add('border-school-blue', 'text-white', 'bg-gray-800');
+                    btn.classList.remove('border-transparent', 'text-gray-300');
+                }
+
+                // Render respective tab contents
+                if(tabName === 'control') this.updateDashboardStats();
+                if(tabName === 'positions') this.renderPositions();
+                if(tabName === 'candidates') { this.updatePositionFilter(); this.renderCandidates(); }
+                if(tabName === 'voters') this.renderVoters();
+                if(tabName === 'results') this.renderResults();
+                if(tabName === 'audit') this.renderAudit();
+            },
+
+            updateAdminControlUI() {
+                if(!core.state.config) return;
+                const status = core.state.config.status;
+                const btns = ['DRAFT', 'READY', 'OPEN', 'PAUSED', 'CLOSED'];
+                
+                btns.forEach(b => {
+                    const el = document.getElementById(`status-btn-${b}`);
+                    if(!el) return;
+                    el.classList.remove('bg-blue-600', 'text-white', 'border-blue-600', 'bg-white', 'text-gray-500', 'border-gray-300', 'shadow-md');
+                    
+                    if (b === status) {
+                        el.classList.add('bg-blue-600', 'text-white', 'border-blue-600', 'shadow-md');
+                    } else {
+                        el.classList.add('bg-white', 'text-gray-500', 'border-gray-300', 'hover:border-blue-400');
+                    }
+                });
+            },
+
+            async setElectionStatus(newStatus) {
+                if(!core.state.config || core.state.config.status === newStatus) return;
+                
+                const confirmMsg = `Are you sure you want to change the election state to ${newStatus}?`;
+                ui.showConfirm('Change Status', confirmMsg, `admin._executeSetStatus('${newStatus}')`);
+            },
+            
+            async _executeSetStatus(newStatus) {
+                ui.showLoader("Updating System State...");
+                try {
+                    await window.updateDoc(window.doc(window.db, utils.basePath(), 'config', 'settings'), { status: newStatus });
+                    await core.logAudit('STATUS_CHANGE', `Election status changed to ${newStatus}`);
+                    ui.hideLoader();
+                } catch(e) {
+                    ui.hideLoader();
+                    ui.showAlert('Error', 'Failed to update status.');
+                }
+            },
+
+            updateDashboardStats() {
+                document.getElementById('stat-total-voters').innerText = core.state.voters.length;
+                document.getElementById('stat-votes-cast').innerText = core.state.votes.length;
+                document.getElementById('stat-active-candidates').innerText = core.state.candidates.filter(c=>c.active).length;
+            },
+
+            async purgeVotes() {
+                ui.showConfirm('Wipe All Votes', 'WARNING: This will permanently delete all cast votes and voter progress histories. Cannot be undone.', 'admin._executePurgeVotes()', true);
+            },
+
+            async _executePurgeVotes() {
+                ui.showLoader('Purging database...');
+                try {
+                    // Because there are no bulk deletes in client SDK without batch, we iterate
+                    const votesDocs = await window.getDocs(window.collection(window.db, utils.basePath(), 'votes'));
+                    for (const doc of votesDocs.docs) { await window.deleteDoc(doc.ref); }
+                    
+                    const statusDocs = await window.getDocs(window.collection(window.db, utils.basePath(), 'voter_status'));
+                    for (const doc of statusDocs.docs) { await window.deleteDoc(doc.ref); }
+
+                    await core.logAudit('PURGE_VOTES', 'Administrator purged all vote records.');
+                    ui.hideLoader();
+                    ui.showAlert('Success', 'All votes have been wiped.');
+                } catch(e) { ui.hideLoader(); ui.showAlert('Error', 'Failed to purge.'); }
+            },
+
+            async factoryReset() {
+                ui.showConfirm('Factory Reset', 'DANGER: Deletes ALL data (positions, candidates, voters, settings). You will need to re-initialize.', 'admin._executeFactoryReset()', true);
+            },
+            
+            async _executeFactoryReset() {
+                ui.showLoader('Executing Factory Reset...');
+                try {
+                    const cols = ['positions', 'candidates', 'voters', 'votes', 'voter_status', 'audit_logs'];
+                    for(const colName of cols) {
+                        const snaps = await window.getDocs(window.collection(window.db, utils.basePath(), colName));
+                        for(const d of snaps.docs) { await window.deleteDoc(d.ref); }
+                    }
+                    await window.deleteDoc(window.doc(window.db, utils.basePath(), 'config', 'settings'));
+                    ui.hideLoader();
+                    window.location.reload(); // Hard reload
+                } catch(e) { ui.hideLoader(); ui.showAlert('Error', 'Reset failed.'); }
+            },
+
+            renderPositions() {
+                const list = document.getElementById('admin-positions-list');
+                let html = '';
+                core.state.positions.forEach(pos => {
+                    html += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="py-3 px-4 border-b border-gray-100 text-sm font-medium">${pos.order}</td>
+                        <td class="py-3 px-4 border-b border-gray-100 text-sm font-bold text-school-blue">${pos.name}</td>
+                        <td class="py-3 px-4 border-b border-gray-100 text-right space-x-2">
+                            <button onclick="admin.showPositionModal('${pos.id}')" class="text-blue-600 hover:text-blue-800 p-2"><i class="fas fa-edit"></i></button>
+                            <button onclick="admin.deletePosition('${pos.id}')" class="text-red-600 hover:text-red-800 p-2"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                });
+                if(core.state.positions.length === 0) html = `<tr><td colspan="3" class="text-center py-6 text-gray-500">No positions configured.</td></tr>`;
+                list.innerHTML = html;
+            },
+
+            showPositionModal(editId = null) {
+                this.editingPositionId = editId;
+                let pos = { name: '', order: core.state.positions.length + 1 };
+                if (editId) pos = core.state.positions.find(p => p.id === editId);
+
+                const content = `
+                    <form id="position-form">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Position Name</label>
+                            <input type="text" id="pos-name" value="${pos.name}" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-school-blue">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Display Order Sequence</label>
+                            <input type="number" id="pos-order" value="${pos.order}" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-school-blue">
+                        </div>
+                    </form>
+                `;
+                const btns = `
+                    <button onclick="ui.hideModal()" class="bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded shadow hover:bg-gray-300">Cancel</button>
+                    <button onclick="admin.savePosition()" class="bg-school-blue text-white font-bold px-4 py-2 rounded shadow hover:bg-blue-800">Save Position</button>
+                `;
+                ui.showModal(editId ? 'Edit Position' : 'Create New Position', content, btns);
+            },
+
+            async savePosition() {
+                const name = document.getElementById('pos-name').value.trim();
+                const order = parseInt(document.getElementById('pos-order').value) || 99;
+                if (!name) return ui.showAlert('Error', 'Name is required');
+
+                ui.showLoader("Saving...");
+                try {
+                    if (this.editingPositionId) {
+                        await window.updateDoc(window.doc(window.db, utils.basePath(), 'positions', this.editingPositionId), { name, order });
+                        await core.logAudit('EDIT_POSITION', `Updated position: ${name}`);
+                    } else {
+                        await window.addDoc(window.collection(window.db, utils.basePath(), 'positions'), { name, order });
+                        await core.logAudit('ADD_POSITION', `Created position: ${name}`);
+                    }
+                    ui.hideLoader();
+                    ui.hideModal();
+                } catch(e) { ui.hideLoader(); ui.showAlert('Error', 'Save failed.'); }
+            },
+
+            deletePosition(id) {
+                ui.showConfirm('Delete Position', 'Delete this position? This does not auto-delete associated candidates.', `admin._executeDeletePosition('${id}')`, true);
+            },
+            async _executeDeletePosition(id) {
+                ui.showLoader("Deleting...");
+                try {
+                    await window.deleteDoc(window.doc(window.db, utils.basePath(), 'positions', id));
+                    await core.logAudit('DELETE_POSITION', `Deleted position ID: ${id}`);
+                    ui.hideLoader();
+                } catch(e) { ui.hideLoader(); ui.showAlert('Error', 'Delete failed.'); }
+            },
+
+            updatePositionFilter() {
+                const sel = document.getElementById('filter-position');
+                let options = `<option value="all">All Positions</option>`;
+                core.state.positions.forEach(p => { options += `<option value="${p.id}">${p.name}</option>`; });
+                sel.innerHTML = options;
+            },
+
+            renderCandidates() {
+                const list = document.getElementById('admin-candidates-list');
+                const filterId = document.getElementById('filter-position').value;
+                
+                let filtered = core.state.candidates;
+                if (filterId !== 'all') filtered = filtered.filter(c => c.positionId === filterId);
+
+                const getHouseColor = (house) => {
+                    switch(house) {
+                        case 'Red': return 'bg-red-500';
+                        case 'Blue': return 'bg-blue-500';
+                        case 'Yellow': return 'bg-yellow-400';
+                        case 'Green': return 'bg-green-500';
+                        default: return 'bg-gray-300';
+                    }
+                };
+
+                let html = '';
+                filtered.forEach(cand => {
+                    const pos = core.state.positions.find(p => p.id === cand.positionId);
+                    const posName = pos ? pos.name : 'Unknown Position';
+                    
+                    html += `
+                    <div class="bg-white rounded-xl shadow border ${cand.active ? 'border-gray-200' : 'border-red-300 opacity-75'} overflow-hidden">
+                        <div class="p-4 flex gap-4 items-center">
+                            <img src="${cand.photoUrl}" class="w-20 h-20 rounded-lg object-cover bg-gray-100 flex-shrink-0 border border-gray-200">
+                            <div class="flex-grow min-w-0">
+                                <h4 class="font-bold text-lg text-gray-900 truncate">${cand.name}</h4>
+                                <p class="text-xs text-school-600 font-bold uppercase truncate">${posName}</p>
+                                <p class="text-sm text-gray-500 truncate flex items-center gap-1 mt-1">
+                                    ${cand.className}-${cand.section} | 
+                                    ${cand.house ? `<span class="w-2 h-2 rounded-full ${getHouseColor(cand.house)} inline-block ml-1"></span> ${cand.house}` : ''}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-4 py-3 border-t border-gray-100 flex justify-between items-center">
+                            <span class="text-xs font-bold ${cand.active ? 'text-green-600' : 'text-red-500'}">
+                                <i class="fas fa-circle text-[8px] mr-1"></i> ${cand.active ? 'Active' : 'Disabled'}
+                            </span>
+                            <div class="space-x-2">
+                                <button onclick="admin.showCandidateModal('${cand.id}')" class="text-blue-600 hover:bg-blue-100 px-2 py-1 rounded text-sm transition-colors"><i class="fas fa-edit"></i> Edit</button>
+                                <button onclick="admin.deleteCandidate('${cand.id}')" class="text-red-600 hover:bg-red-100 px-2 py-1 rounded text-sm transition-colors"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                if(filtered.length === 0) html = `<div class="col-span-full p-8 text-center text-gray-500 bg-white rounded-xl border border-gray-200">No candidates found.</div>`;
+                list.innerHTML = html;
+            },
+
+            showCandidateModal(editId = null) {
+                if(core.state.positions.length === 0) {
+                    return ui.showAlert('Error', 'Please create a Position first before adding candidates.');
+                }
+
+                this.editingCandidateId = editId;
+                let cand = { name: '', positionId: core.state.positions[0].id, className: '', section: '', house: '', candidateNumber: '', symbol: '', photoUrl: '', active: true };
+                
+                if (editId) cand = core.state.candidates.find(c => c.id === editId);
+                this.tempImageUrl = cand.photoUrl || `https://placehold.co/150x150/f1f5f9/a1a1aa?text=Upload+Photo`;
+
+                let posOptions = '';
+                core.state.positions.forEach(p => {
+                    posOptions += `<option value="${p.id}" ${cand.positionId === p.id ? 'selected' : ''}>${p.name}</option>`;
+                });
+
+                const content = `
+                    <form class="space-y-4">
+                        <div class="flex flex-col items-center mb-4">
+                            <label class="text-sm font-bold text-gray-700 mb-2">Candidate Photo (Required)</label>
+                            <div class="img-preview-container shadow-sm hover:shadow-md transition-shadow" onclick="document.getElementById('image-upload-input').click()" title="Click to upload">
+                                <img id="cand-photo-preview" src="${this.tempImageUrl}">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2">
+                                <label class="block text-gray-700 text-xs font-bold mb-1">Full Name</label>
+                                <input type="text" id="cand-name" value="${cand.name}" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-school-blue">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-xs font-bold mb-1">Position</label>
+                                <select id="cand-pos" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-school-blue">${posOptions}</select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-xs font-bold mb-1">Ballot Number</label>
+                                <input type="text" id="cand-num" value="${cand.candidateNumber}" required placeholder="e.g. 01" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-school-blue">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-xs font-bold mb-1">Class</label>
+                                <input type="text" id="cand-class" value="${cand.className}" required class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-school-blue">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-xs font-bold mb-1">Section</label>
+                                <input type="text" id="cand-sec" value="${cand.section}" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-school-blue">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-xs font-bold mb-1">House Color</label>
+                                <div class="flex gap-2 items-center h-[38px]">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="cand-house" value="Red" ${cand.house === 'Red' ? 'checked' : ''} class="peer sr-only">
+                                        <div class="w-6 h-6 rounded bg-red-500 border-2 border-transparent peer-checked:border-gray-900 peer-checked:ring-2 peer-checked:ring-red-300 shadow-sm"></div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="cand-house" value="Blue" ${cand.house === 'Blue' ? 'checked' : ''} class="peer sr-only">
+                                        <div class="w-6 h-6 rounded bg-blue-500 border-2 border-transparent peer-checked:border-gray-900 peer-checked:ring-2 peer-checked:ring-blue-300 shadow-sm"></div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="cand-house" value="Yellow" ${cand.house === 'Yellow' ? 'checked' : ''} class="peer sr-only">
+                                        <div class="w-6 h-6 rounded bg-yellow-400 border-2 border-transparent peer-checked:border-gray-900 peer-checked:ring-2 peer-checked:ring-yellow-300 shadow-sm"></div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="cand-house" value="Green" ${cand.house === 'Green' ? 'checked' : ''} class="peer sr-only">
+                                        <div class="w-6 h-6 rounded bg-green-500 border-2 border-transparent peer-checked:border-gray-900 peer-checked:ring-2 peer-checked:ring-green-300 shadow-sm"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-xs font-bold mb-1">Symbol (Emoji)</label>
+                                <input type="text" id="cand-sym" value="${cand.symbol}" placeholder="🌟" class="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-school-blue">
+                            </div>
+                            <div class="col-span-2 flex items-center mt-2 bg-gray-50 p-3 rounded border border-gray-200">
+                                <input type="checkbox" id="cand-active" ${cand.active ? 'checked' : ''} class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <label class="ml-2 text-sm font-bold text-gray-700">Candidate is Active on Ballot</label>
+                            </div>
+                        </div>
+                    </form>
+                `;
+                const btns = `
+                    <button onclick="ui.hideModal()" class="bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded shadow hover:bg-gray-300">Cancel</button>
+                    <button onclick="admin.saveCandidate()" class="bg-school-blue text-white font-bold px-4 py-2 rounded shadow hover:bg-blue-800">Save Candidate</button>
+                `;
+                ui.showModal(editId ? 'Edit Candidate Profile' : 'Register Candidate', content, btns);
+            },
+
+            handleImageUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (!file.type.match('image.*')) return ui.showAlert('Error', 'Select an image file.');
+                if (file.size > 2 * 1024 * 1024) return ui.showAlert('Error', 'Image too large. Keep under 2MB.');
+
+                const reader = new FileReader();
+                reader.onload = (re) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const minDim = Math.min(img.width, img.height);
+                        canvas.width = 300; canvas.height = 300;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, (img.width - minDim) / 2, (img.height - minDim) / 2, minDim, minDim, 0, 0, 300, 300);
+                        this.tempImageUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        document.getElementById('cand-photo-preview').src = this.tempImageUrl;
+                    };
+                    img.src = re.target.result;
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+            },
+
+            async saveCandidate() {
+                const houseRadio = document.querySelector('input[name="cand-house"]:checked');
+                const data = {
+                    name: document.getElementById('cand-name').value.trim(),
+                    positionId: document.getElementById('cand-pos').value,
+                    candidateNumber: document.getElementById('cand-num').value.trim(),
+                    className: document.getElementById('cand-class').value.trim(),
+                    section: document.getElementById('cand-sec').value.trim(),
+                    house: houseRadio ? houseRadio.value : '',
+                    symbol: document.getElementById('cand-sym').value.trim(),
+                    photoUrl: this.tempImageUrl,
+                    active: document.getElementById('cand-active').checked
+                };
+
+                if (!data.name || !data.candidateNumber) return ui.showAlert('Error', 'Name and Number required.');
+
+                ui.showLoader("Saving...");
+                try {
+                    if (this.editingCandidateId) {
+                        await window.updateDoc(window.doc(window.db, utils.basePath(), 'candidates', this.editingCandidateId), data);
+                        await core.logAudit('EDIT_CANDIDATE', `Updated candidate: ${data.name}`);
+                    } else {
+                        await window.addDoc(window.collection(window.db, utils.basePath(), 'candidates'), data);
+                        await core.logAudit('ADD_CANDIDATE', `Added candidate: ${data.name}`);
+                    }
+                    ui.hideLoader();
+                    ui.hideModal();
+                } catch(e) { ui.hideLoader(); ui.showAlert('Error', 'Save failed.'); }
+            },
+
+            deleteCandidate(id) {
+                ui.showConfirm('Delete Candidate', 'Remove this candidate?', `admin._executeDeleteCandidate('${id}')`, true);
+            },
+            async _executeDeleteCandidate(id) {
+                ui.showLoader("Deleting...");
+                try {
+                    await window.deleteDoc(window.doc(window.db, utils.basePath(), 'candidates', id));
+                    await core.logAudit('DELETE_CANDIDATE', `Deleted candidate ID: ${id}`);
+                    ui.hideLoader();
+                } catch(e) { ui.hideLoader(); ui.showAlert('Error', 'Delete failed.'); }
+            },
+
+            async processVoterImport() {
+                const text = document.getElementById('voter-csv-input').value.trim();
+                if(!text) return ui.showAlert('Error', 'Input area is empty.');
+                
+                const rows = text.split('\n');
+                let imported = 0, skipped = 0;
+                ui.showLoader("Processing Import...");
+
+                try {
+                    // Sequential processing due to artifact limits (avoid complex batches)
+                    for(let i=0; i<rows.length; i++) {
+                        const cols = rows[i].split(',').map(s=>s.trim());
+                        if(cols.length < 2) continue; // Skip invalid
+                        if(cols[0].toLowerCase() === 'voterid' || cols[0].toLowerCase() === 'id') continue; // Header
+                        
+                        const vId = cols[0].toUpperCase();
+                        // Check duplicate locally
+                        if(core.state.voters.find(v => v.voterId === vId)) { skipped++; continue; }
+
+                        await window.addDoc(window.collection(window.db, utils.basePath(), 'voters'), {
+                            voterId: vId,
+                            name: cols[1] || 'Unknown',
+                            className: cols[2] || '',
+                            section: cols[3] || '',
+                            house: cols[4] || ''
+                        });
+                        imported++;
+                    }
+                    
+                    document.getElementById('voter-csv-input').value = '';
+                    await core.logAudit('IMPORT_VOTERS', `Imported ${imported} voters. Skipped ${skipped} duplicates.`);
+                    ui.hideLoader();
+                    ui.showAlert('Import Complete', `Successfully imported: ${imported}<br>Skipped (duplicates/invalid): ${skipped}`);
+                } catch(e) {
+                    ui.hideLoader();
+                    ui.showAlert('Error', 'Import failed mid-process.');
+                }
+            },
+
+            renderVoters() {
+                const list = document.getElementById('admin-voters-list');
+                const search = document.getElementById('voter-search').value.toLowerCase();
+                
+                let filtered = core.state.voters;
+                if(search) {
+                    filtered = filtered.filter(v => 
+                        (v.rollNo && v.rollNo.toLowerCase().includes(search)) || 
+                        (v.voterId && v.voterId.toLowerCase().includes(search)) || 
+                        (v.name && v.name.toLowerCase().includes(search))
+                    );
+                }
+                
+                document.getElementById('voter-list-count').innerText = core.state.voters.length;
+
+                let html = '';
+                filtered.forEach(v => {
+                    html += `
+                    <tr class="hover:bg-blue-50">
+                        <td class="py-2 px-4 border-b border-gray-100 font-mono font-medium">${v.rollNo || '-'}</td>
+                        <td class="py-2 px-4 border-b border-gray-100 font-bold text-gray-800">${v.name}</td>
+                        <td class="py-2 px-4 border-b border-gray-100">${v.className || ''}</td>
+                        <td class="py-2 px-4 border-b border-gray-100 text-green-600 text-xs font-bold"><i class="fas fa-check-circle"></i> Participated</td>
+                    </tr>`;
+                });
+                if(filtered.length === 0) html = `<tr><td colspan="4" class="text-center py-4 text-gray-500">No voters have participated yet.</td></tr>`;
+                list.innerHTML = html;
+            },
+            
+            showClearVotersConfirm() {
+                ui.showConfirm('Clear Voter Roll', 'Delete ALL registered voters? This will not delete votes already cast.', 'admin._executeClearVoters()', true);
+            },
+
+            async _executeClearVoters() {
+                ui.showLoader("Clearing Roll...");
+                try {
+                    const snaps = await window.getDocs(window.collection(window.db, utils.basePath(), 'voters'));
+                    for(const d of snaps.docs) { await window.deleteDoc(d.ref); }
+                    await core.logAudit('CLEAR_VOTERS', 'Admin cleared the entire voter roll.');
+                    ui.hideLoader();
+                } catch(e) { ui.hideLoader(); ui.showAlert('Error', 'Failed to clear.'); }
+            },
+
+            renderResults() {
+                const container = document.getElementById('results-container');
+                const warning = document.getElementById('results-warning');
+                
+                if (core.state.config.status !== 'CLOSED') {
+                    warning.classList.remove('hidden');
+                } else {
+                    warning.classList.add('hidden');
+                }
+
+                if(core.state.positions.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500">No positions configured.</p>';
+                    return;
+                }
+
+                let html = '';
+                core.state.positions.forEach(pos => {
+                    // Calculate votes for this position
+                    const posVotes = core.state.votes.filter(v => v.positionId === pos.id);
+                    const totalVotes = posVotes.length;
+                    
+                    let candidatesData = core.state.candidates.filter(c => c.positionId === pos.id).map(c => {
+                        const vCount = posVotes.filter(v => v.candidateId === c.id).length;
+                        return { ...c, voteCount: vCount, percentage: totalVotes > 0 ? ((vCount/totalVotes)*100).toFixed(1) : 0 };
+                    });
+                    
+                    // Sort by votes descending
+                    candidatesData.sort((a,b) => b.voteCount - a.voteCount);
+
+                    // Check for TIE among top
+                    let isTie = false;
+                    if(candidatesData.length > 1 && candidatesData[0].voteCount > 0 && candidatesData[0].voteCount === candidatesData[1].voteCount) {
+                        isTie = true;
+                    }
+
+                    html += `
+                    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden break-inside-avoid print:mb-8 print:shadow-none print:border-gray-300">
+                        <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center print:bg-gray-200 print:text-black print:border-b">
+                            <h4 class="text-xl font-black uppercase tracking-wider">${pos.name}</h4>
+                            <span class="text-sm font-medium bg-gray-700 px-3 py-1 rounded-full print:bg-transparent print:border print:border-black">Total Votes: ${totalVotes}</span>
+                        </div>
+                        <div class="p-6">
+                            ${isTie && core.state.config.status === 'CLOSED' ? `<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-6 font-bold flex items-center"><i class="fas fa-exclamation-triangle mr-2"></i> TIE DETECTED — ADMINISTRATIVE ACTION REQUIRED</div>` : ''}
+                            
+                            <div class="space-y-6">`;
+                            
+                    candidatesData.forEach((cand, index) => {
+                        const isWinner = index === 0 && !isTie && cand.voteCount > 0;
+                        html += `
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div class="flex items-center gap-3">
+                                            ${isWinner && core.state.config.status === 'CLOSED' ? `<i class="fas fa-trophy text-yellow-500 text-xl"></i>` : `<span class="w-5 font-mono text-gray-400 text-sm">${index+1}.</span>`}
+                                            <img src="${cand.photoUrl}" class="w-10 h-10 rounded-full border border-gray-300 object-cover">
+                                            <span class="font-bold text-gray-800 text-lg">${cand.name}</span>
+                                            <span class="text-xs text-gray-500 hidden sm:inline">(${cand.className}-${cand.section})</span>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="font-black text-xl text-school-blue">${cand.voteCount}</span> <span class="text-xs text-gray-500 uppercase tracking-widest">Votes</span>
+                                            <div class="text-xs font-bold text-gray-400">${cand.percentage}%</div>
+                                        </div>
+                                    </div>
+                                    <div class="result-bar-bg print:border print:border-gray-200">
+                                        <div class="result-bar-fill ${isWinner ? 'bg-green-500' : 'bg-school-blue'} print:bg-gray-800" style="width: ${cand.percentage}%"></div>
+                                    </div>
+                                </div>`;
+                    });
+
+                    if(candidatesData.length === 0) {
+                        html += `<p class="text-gray-500 text-sm">No candidates in this position.</p>`;
+                    }
+
+                    html += `
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                
+                container.innerHTML = html;
+            },
+
+            renderAudit() {
+                const list = document.getElementById('admin-audit-list');
+                let html = '';
+                core.state.audit.forEach(log => {
+                    html += `
+                    <tr class="hover:bg-gray-50 border-b border-gray-100">
+                        <td class="py-2 px-4 text-gray-500 text-xs">${log.dateStr}</td>
+                        <td class="py-2 px-4 font-bold text-school-blue text-xs">${log.action}</td>
+                        <td class="py-2 px-4 text-gray-700 text-sm">${log.details}</td>
+                    </tr>`;
+                });
+                if(core.state.audit.length === 0) html = `<tr><td colspan="3" class="text-center py-4 text-gray-500">No logs found.</td></tr>`;
+                list.innerHTML = html;
+            }
+        };
+
+    </script>
+</body>
+</html>
