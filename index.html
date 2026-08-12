@@ -931,10 +931,37 @@
                     this.currentVoter = null;
                     document.getElementById('voter-class-input').value = '';
                     document.getElementById('voter-roll-input').value = '';
+                    const houseRadio = document.querySelector('input[name="voter-house"]:checked');
+                    if(houseRadio) houseRadio.checked = false;
                     return;
                 }
 
                 this.currentPosition = this.votingQueue.shift();
+                
+                // Fetch and filter candidates for this position FIRST
+                let candidates = core.state.candidates
+                                    .filter(c => c.positionId === this.currentPosition.id && c.active)
+                                    .sort((a,b) => (a.candidateNumber || '').localeCompare(b.candidateNumber || ''));
+                
+                // HOUSE-SPECIFIC FILTERING: 
+                // Only show candidates matching the voter's house if the position is house-specific.
+                if (this.currentPosition.isHouseSpecific && this.currentVoter && this.currentVoter.house) {
+                    candidates = candidates.filter(c => c.house === this.currentVoter.house);
+                }
+
+                // If no candidates exist for this voter (e.g. empty house), AUTO-SKIP instead of showing a button
+                if (candidates.length === 0) {
+                    // Record skip status so they don't get stuck if they log out and log back in
+                    window.addDoc(window.collection(window.db, utils.basePath(), 'voter_status'), {
+                        voterId: this.currentVoter.voterId,
+                        positionId: this.currentPosition.id,
+                        timestamp: Date.now(),
+                        autoSkipped: true
+                    }).then(() => {
+                        this.nextPosition();
+                    });
+                    return;
+                }
                 
                 // Update Progress UI
                 const total = core.state.positions.length;
@@ -944,27 +971,19 @@
                 document.getElementById('voting-progress').innerText = `Position ${currentNum} of ${total}`;
                 document.getElementById('voting-position-title').innerText = this.currentPosition.name;
 
-                this.renderBallot(this.currentPosition.id);
+                this.renderBallot(candidates);
                 ui.navigate('voting');
             },
 
-            renderBallot(positionId) {
+            renderBallot(candidates) {
                 const container = document.getElementById('ballot-container');
-                let candidates = core.state.candidates
-                                    .filter(c => c.positionId === positionId && c.active)
-                                    .sort((a,b) => (a.candidateNumber || '').localeCompare(b.candidateNumber || ''));
                 
-                // HOUSE-SPECIFIC FILTERING: 
-                // If the admin marked this position as House-Specific, only show candidates matching the voter's house.
-                if (this.currentPosition.isHouseSpecific && this.currentVoter && this.currentVoter.house) {
-                    candidates = candidates.filter(c => c.house === this.currentVoter.house);
-                }
-                
+                // Fallback just in case, though auto-skip usually handles this now
                 if (candidates.length === 0) {
                     container.innerHTML = `
                         <div class="p-8 text-center bg-white rounded-xl shadow border border-gray-200">
                             <i class="fas fa-user-slash text-4xl text-gray-300 mb-4"></i>
-                            <p class="text-gray-500 font-medium">No candidates are registered for this position.</p>
+                            <p class="text-gray-500 font-medium">No candidates are available.</p>
                             <button onclick="votingFlow.nextPosition()" class="mt-6 bg-school-blue text-white font-bold px-6 py-3 rounded shadow">Skip to Next Position</button>
                         </div>`;
                     return;
